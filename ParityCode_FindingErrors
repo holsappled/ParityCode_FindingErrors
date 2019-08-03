@@ -1,0 +1,252 @@
+; DEREK HOLSAPPLE
+; 20190318
+; COMPUTER ORGANIZATION II
+
+;HOMEWORK #6
+; 
+; The program will use parity calculations to determine if there is an error
+; The code will first store the Pall original for later comparison
+; The code then will store the original parity bits into a register
+; Code will calculate the Pall new bit with the OnesCounter subroutine
+; The code will then use masks and OnesCounter to find each individual parity bit
+; Store all the calculated parity bits into a register
+; Compare Pall original with Pall new 
+; Compare Parity bits original vs Parity bits new
+; Use exclusive Or between Parity bits original vs Parity bits new to isolate the error
+; Use the location of the problomatic bit, correct the original number
+; Determine if the number contains no errors, single error, or double error
+
+			ADR		r0, OriginalNumber   	; Address of the word to be tested
+			LDR		r0, [r0]		; Load the word into register 0
+
+			MOV		r5, #0			; Counter to test for 1's
+			
+; **********************************************************************************
+												
+; Store the Pall "original" into its own register later testing
+; Store all the parity bits from the original number 
+
+
+			;Pall "original"
+			AND   r12, r0,  #0b1 		; Mask to pull out parit "PAll" 
+
+			;P0
+			AND  r11, r0, #0b10 		; Mask to pull out parit "P0" 
+			LSR r11, r11, #1     		; Prepare for test 2 format,
+
+			;P1
+			AND r10, r0, #0b100 		; Mask to pull out parit "P1" 
+			LSR r10, r10, #1 		; Prepare for test 2 format
+
+			;P2
+			AND r9, r0, #0b1000  		; Mask to pull out parit "P2" 
+			LSR r9, r9, #1 			; Prepare for test 2 format
+
+			;P3 
+			AND r8, r0, #0b100000000  	; Mask to pull out parit "P3" 
+			LSR r8, r8, #5 			; Prepare for test 2 format
+
+			;P4
+			AND r7, r0, #0b10000000000000000  ; Mask to pull out parit "P4" 
+			LSR r7, r7, #12 		  ; Prepare for test 2 format
+
+			;Combine the bits together with ORR
+			ORR r11, r11, r10		 ; Add P0 and P1
+			ORR r11, r11, r9 		 ; Add P0, P1, P2
+			ORR r11, r11, r8 		 ; Add P0, P1, P2, P3
+			ORR r11, r11, r7 		 ; Add P0, P1, P2, P3, P4
+			; The parity bits "original" are now stored in r11
+			; r11, r12 contain the Pall original and Parity bits original
+			; Current registers that can not be used and are saved for later testing
+			; r11, r12, r5, r0
+
+; **********************************************************************************
+;Calculate all the parity bits
+
+	; Test parity bit PAll new												
+			LSR r10, r0, #1 		; Create a (temporary word #1)
+							; (temorary word #1) will start as raw data number
+						        ; Logical shift the number so the P all bit is not in the number
+				    		        ; Rememebr this number will have a 0 added onto the end
+			MOV r3, r10	  		; Move r10 to r3 to prime for the OnesCounter
+							   
+		BL OnesCounter				; Execute subroutine to count the number of ones
+
+			MOV r10, r5  		        ; Move the value of the counter to test if  even or odd 
+
+			; If odd r10 = 1, if even r10 = 0
+			AND	r10, r10,  #1 		; test to see if number of 1's in the counter is even or odd
+						        ; store in r10 for test #1 
+			; Do not overwrite r11, r12, r5, r0, or r10
+
+	; Test parity bit P0
+			
+			LSR r9, r0, #2  	; Remove bits from the left  for parity P0
+			
+			ADR	r1, MaskP0  	; Address of the mask to be implemented
+			LDR	r1, [r1]	; Load the mask to register r1
+			AND 	r9, r9, r1	; Use the mask to produce the number of ones for the parity bit
+			MOV	r3, r9		; Prime for the OnesCounter
+			MOV	r5, #0 	        ; Reset the counter to 0
+			
+		BL OnesCounter		 		; Execute subroutine to count the number of ones
+
+			Mov r9, r5 			; Move the value of the counter of ones to test if a even or odd number
+							; If odd r9 = 1, if even r9 = 0
+			AND r9, r9,  #1 		; test to see if number of 1's in the counter is even or odd
+							; store in r9 for test #1
+							; P0 will be the least significant bit in test two, 
+							; No need to logical shift for later combination			
+			; Do not overwrite r11, r12, r5, r0, r10, r9
+
+	; Test parity bit P1
+
+			LSR r8, r0, #3 		        ; Remove bits from the left to only include bits for parity P1
+			ADR r1, MaskP1  		; Address of the mask to be implemented
+			LDR r1, [r1]			; Load the mask to register r1
+			AND r8, r8, r1			; Use the mask to produce the number of ones in the program
+			MOV r3, r8			; Prime for the OnesCounter
+			MOV r5, #0  			; Reset the counter to 0
+			
+		BL OnesCounter 				; Execute subroutine to count the number of ones
+
+			Mov r8, r5 			; Move the value of the counter of ones to test if a even or odd number
+							; If odd r8 = 1, if even r8 = 0
+			AND r8, r8,  #1 		; Test to see if number of 1's in the counter is even or odd
+							; Store in r8 for test #1				
+			LSL r8, r8, #1 			; Logical shift for later combination	
+			; Do not overwrite r11, r12, r5, r0, r10, r9, or r8
+
+	;Test parity bit P2
+			LSR r7, r0, #5 			; Remove bits from the left to only include bits for parity P2
+			ADR r1, MaskP2  		; Address of the mask to be implemented
+			LDR r1, [r1]			; Load the mask to register r1
+			AND r7, r7, r1 			; Use the mask to produce the number of ones in the program
+			MOV r3, r7			; Prime for the OnesCounter
+			MOV r5, #0  			; Reset the counter to 0
+		
+		BL OnesCounter
+
+			Mov r7, r5 			; Move the value of the counter of ones to test if a even or odd number
+							; If odd r10 = 1, if even r10 = 0
+			AND r7, r7,  #1 		; Test to see if number of 1's in the counter is even or odd
+							; Store in r7 for test #1
+									
+			LSL r7, r7, #2			; Logical shift for later combination	
+			; Do not overwrite r11, r12, r5, r0, r10, r9, r8, or r7
+
+	;Test parity bit P3
+			LSR r6, r0, #9 			; Remove bits from the left to only include bits for parity P3
+			ADR r1, MaskP3   		; Address of the mask to be implemented
+			LDR r1, [r1]			; Load the mask to register r1
+			AND r6, r6, r1 			; Use the mask to produce the number of ones in the program
+			MOV r3, r6			; Move r6 to r3 to prime for the OnesCounter
+			MOV r5, #0  			; Reset the counter to 0
+		
+		BL OnesCounter
+
+			Mov r6, r5 			; Move the value of the counter of ones for the P0 to r9 to test if a even or odd number
+							; If odd r10 = 1, if even r10 = 0
+			AND r6, r6,  #1 		; Test to see if number of 1's in the counter is even or odd
+							; Store in r6 for test #1
+										
+			LSL r6, r6, #3   			; Logical shift for later combination
+			; Do not overwrite r11, r12, r5, r0, r10, r9, r8, r7 or r6			
+
+	;Test parity bit P4
+			LSR r4, r0, #17 		; Remove bits from the left to only include bits for parity P4
+			ADR r1, MaskP4   		; Address of the mask to be implemented
+			LDR r1, [r1]			; Load the mask to register r1
+			AND r4, r4, r1 			; Use the mask to produce the number of ones in the program
+			MOV r3, r4			; Move r4 to r3 to prime for the OnesCounter
+			MOV r5, #0  			; Reset the counter to 0
+		
+		BL OnesCounter
+
+			Mov r4, r5 				; Move the value of the counter of ones for the P0 to r9 to test if a even or odd number
+			; If odd r10 = 1, if even r10 = 0
+			AND r4, r4,  #1 			; test to see if number of 1's in the counter is even or odd
+								; store in r10 for test #1
+									
+			LSL r4, r4, #4				; Logical shift for later combination
+			; Do not overwrite r11, r12, r0, r10, r9, r8, r7, r4, or r6
+
+	;Combine the tested parity bits P0, P1, P2, P3, P4
+			;Combine the bits together with ORR
+			ORR r9, r9, r8 			; Add P0 and P1
+			ORR r9, r9, r7  		; Add P0, P1, P2
+			ORR r9, r9, r6 			; Add P0, P1, P2, P3
+			ORR r9, r9, r4 			; Add P0, P1, P2, P3, P4
+			; r11 "original" has data for test 2 to be compared against 
+			; Do not overwrite r11, r10,  r12, r0, or r9
+			
+; **********************************************************************************
+;TEST 2 is conducted first to determine if there is an error between the parity bits
+
+               CMP r11, r9
+               BEQ noError 				; If the parity bits are equal then there is no error.
+               ; If not equal then find where the single error is located
+			EOR r7, r11 , r9 		; exclusive or the parity bits of the original with the tested parity bits,
+			;Location of error is in "r7"
+			; Do not overwrite r12, r10, r0, or r7
+			
+; **********************************************************************************
+; TEST 1
+; Run Test 1 to determine if single error or double error
+
+			CMP r12 , r10 		; Pall original "r12" vs Pall calculated "r10"
+			BEQ doubleError 	; If the "Pall original" and "Pall new" are equal then there is a double error
+			; Do not overwrite r0 or r7
+			
+; **********************************************************************************
+; Correct the error if Single Error
+
+			MOV r5, #1 			; Replace counter with #1 to be used as the toggle to correct bit
+			LSL r5, r5, r7 			; Logical shift left by "r7" to toggle the bit
+			EOR r6, r5, r0 			; Correct the error at location 17 or "r7"
+			B singleError
+			
+
+; **********************************************************************************
+; Type of error detected at end of pogram
+singleError	END			; End program if the test is a single error 1, bit corrected
+doubleError  	END 			; End program if a double error was detected
+noError         END          		; End program if no error was detected
+
+
+; Subroutine to count the number of ones
+OnesCounter
+			MOV    r4, r3      		
+			CMP    r4 , #0			; Check to see if the incoming number is already equal to zero
+			MOVEQ  PC ,  LR 		; If the number is already zero then return zero 
+			
+OnesLoop			
+			SUB	r2, r3, #1		; Store (temorary word #2) in r2
+							; Decrement (temporary word #2) (r2) by 1 
+							; You must save the last result of AND to compare against itself
+			
+			AND     r3, r3, r2		; Compare (temporary word #1) to (temporary word #2), 
+							; Store (temporary word #1) to r3
+			
+			ADD 	r5, r5, #1		; Increase counter of 1's (r5++)
+			CMP	r3, #0			; Check if zero
+			BNE	OnesLoop		; Loop if the Z flag = 0, Continue if data contains 1
+			MOV	PC, LR			; End if zero
+
+; **********************************************************************************
+;DATA
+
+; Original number, This number contains an error in bit position 17				
+OriginalNumber	     DCD .    0b1000110001101100111010
+
+; Masks for running individual parity bit tests
+MaskP0               DCD      0b10101010101010101010
+MaskP1               DCD      0b0011001100100000001	
+MaskP2		     DCD      0b11000011110000111
+MaskP3		     DCD      0b0000001111111
+MaskP4		     DCD      0b11111
+
+
+
+
+
